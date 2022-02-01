@@ -19,10 +19,23 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+const loginSchema = joi.object({
+  email: joi.string().required(),
+  password: joi
+    .string()
+    .pattern(/[0-9a-zA-Z]{6,}/)
+    .message("Senha deve ter no mínimo 6 caracteres")
+    .required(),
+});
+
 app.post("/login", async (req, res) => {
   const loginInfo = req.body;
   console.log(loginInfo);
   try {
+    const validation = loginSchema.validate(loginInfo);
+    if (validation.error) {
+      res.status(422).send(validation.error.details[0].message);
+    }
     res.status(200).send("Foi recebido");
   } catch (error) {
     console.log(error);
