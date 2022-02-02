@@ -1,18 +1,21 @@
 import express from "express";
 import dotenv from "dotenv";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import cors from "cors";
 import joi from "joi";
-//start mongo mongod --dbpath ~/.mongo
+
+//start mongo: mongod --dbpath ~/.mongo
 const result = dotenv.config();
+
 if (result.error) {
   console.log("Houve algum problema com a conexão do banco de dados");
 }
 
-const mongoClient = new MongoClient(process.env.MONGO_URI);
+const connectMongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
-MongoClient.connect(() => {
-  db = mongoClient.db("myWallet");
+
+connectMongoClient.connect(() => {
+  db = connectMongoClient.db("myWallet");
 });
 
 const app = express();
@@ -27,9 +30,9 @@ const loginSchema = joi.object({
 const signupSchema = joi.object({
   name: joi
     .string()
-    .pattern(/[0-9a-zA-Z]{3,}/)
+    .pattern(/[a-zA-Z]{3,}/)
     .required(),
-  email: joi.string().required,
+  email: joi.string().required(),
   password: joi
     .string()
     .pattern(/[0-9a-zA-Z]{6,}/)
@@ -39,26 +42,35 @@ const signupSchema = joi.object({
 
 app.post("/signup", async (req, res) => {
   const signupInfo = req.body;
-  console.log(signupInfo);
+
   if (signupInfo.password != signupInfo.passwordConfirmation) {
     return res.status(401).send("As senhas devem ser iguais!");
   }
   try {
     const validation = signupSchema.validate(signupInfo);
     if (validation.error) {
-      return res.sendStatus(422);
+      console.log("erro de outra coisa");
+      return res
+        .status(422)
+        .send(
+          "Houve um erro com seu cadastro. Confirme se informou um e-mail válido"
+        );
     }
     //se chegou aqui, passou pelas validaçòes, e ai é hora de adicionar na coleção
-    let toSignUp = {
-      name: signupInfo.name,
-      email: signupInfo.email,
-      password: signupInfo.password,
+    delete signupInfo["passwordConfirmation"];
+    const toSignUp = {
+      ...signupInfo,
     };
-    await db.collection("currentUsers").insertOne(toSignUp);
+
+    console.log(toSignUp);
+    await db.collection("currentUsers").insertOne({ toSignUp });
+
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
-    res.sendStatus(500);
+    res
+      .status(500)
+      .send("Houve um erro com a sua solicitação. Tente novamente mais tarde");
   }
 });
 
