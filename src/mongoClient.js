@@ -10,7 +10,7 @@ if (result.error) {
 
 const connectMongoClient = new MongoClient(process.env.MONGO_URI);
 
-await connectMongoClient.connect;
+await connectMongoClient.connect();
 
 const db = connectMongoClient.db("myWallet");
 

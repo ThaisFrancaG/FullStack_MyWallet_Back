@@ -3,6 +3,7 @@ import cors from "cors";
 import joi from "joi";
 import db from "./mongoClient.js";
 import { signUp, login } from "./controllers/authControllers.js";
+import { addIncome } from "./controllers/operationsControllers.js";
 
 const app = express();
 app.use(express.json());
