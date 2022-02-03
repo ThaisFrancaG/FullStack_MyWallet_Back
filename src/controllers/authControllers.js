@@ -1,4 +1,5 @@
 import db from "../mongoClient.js";
+import { ObjectId } from "mongodb";
 import joi from "joi";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
@@ -78,23 +79,53 @@ export async function login(req, res) {
       return res.sendStatus(422);
     }
     //conferir se o usuário está no banco de dados
-    const currentUsers = await db
+    const checkUser = await db
       .collection("currentUsers")
       .findOne({ email: loginInfo.email });
-    if (!currentUsers) {
+    if (!checkUser) {
       return res
         .status(401)
         .send("Login não autorizado. Confirme os dados enviados");
     }
-    //Se o usuário existir, tem que conferir se a senha enviada pelo usuário bate com a senha salva e encriptada no servidor
+    //Se o usuário existir, tem que conferir se a senha enviada pelo usuário bate com a senha salva e encriptada no servidor. PRa isso, tem que começar pegando o ID
+    const userId = checkUser._id.toString();
+    console.log(userId);
+    const preSeasoned = await db
+      .collection("currentUsers")
+      .findOne({ _id: new ObjectId(userId) });
 
-    //se a senha bater, tem que enviar o token
+    let checkLogin = await bcrypt.compare(
+      loginInfo.password,
+      preSeasoned.password
+    );
 
+    if (!checkLogin) {
+      return res
+        .status(409)
+        .send("Email ou senha incorreto. Confira as informações enviadas");
+    }
+    //se chegar aqui, a senha foi confirmada, e o usuário pode receber o token
     const userToken = uuid();
     //cada vez que é chamado, é retornado um token completamente diferente, então é bom salvar direto no objeto.
-    //relacionar o token ao ID DE UM USUÁRIO e salvar num objeto a parte
     console.log(userToken);
-    res.status(200).send(userToken);
+    //relacionar o token ao ID DE UM USUÁRIO e salvar num objeto a parte
+    //mas antes, tem que conferir se o ID já tem um token e ,se tiver, substituir
+
+    await db.collection("sessions").deleteOne({ userId: userId });
+
+    await db
+      .collection("sessions")
+      .insertOne({ userId: userId, userToken: userToken });
+    return res.status(200).send(userToken);
+
+    // console.log("Já tem sessão, então tem que atualizar");
+
+    // await db.collection("sessions").findOneAndReplace(
+    //   { userId: new ObjectId(userId) },
+
+    //   { userId: "Mudei", userToken: "Mudei" },
+    //   { returnNewDocument: true }
+    // );
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
